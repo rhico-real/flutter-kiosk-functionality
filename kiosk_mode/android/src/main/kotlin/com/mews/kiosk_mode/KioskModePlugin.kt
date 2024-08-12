@@ -41,27 +41,12 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
             redirectToHomeLauncherSettings(a)
-            setupWindowManager(a)
-            interceptView?.let { view ->
-                val params = createLayoutParams(a)
-                try {
-                    windowManager.addView(view, params)
-                    result.success(true)
-                } catch (e: RuntimeException) {
-                    e.printStackTrace()
-                    result.success(false)
-                }
-            } ?: result.success(false)
         } ?: result.success(false)
     }
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
             try {
-                interceptView?.let { view ->
-                    windowManager.removeView(view)
-                    interceptView = null
-                }
                 redirectToHomeLauncherSettings(a)
                 result.success(true)
             } catch (e: RuntimeException) {
@@ -74,32 +59,6 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
     private fun redirectToHomeLauncherSettings(activity: Activity) {
         val intent = Intent(Settings.ACTION_HOME_SETTINGS)
         activity.startActivity(intent)
-    }
-
-    private fun requestOverlayPermission(activity: Activity) {
-        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + activity.packageName))
-        activity.startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
-    }
-
-    private fun setupWindowManager(activity: Activity) {
-        windowManager = activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        interceptView = CustomViewGroup(activity)
-    }
-
-    private fun createLayoutParams(activity: Activity): WindowManager.LayoutParams {
-        val params = WindowManager.LayoutParams().apply {
-            type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            gravity = Gravity.TOP
-            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-            width = WindowManager.LayoutParams.MATCH_PARENT
-
-            val resId = activity.resources.getIdentifier("status_bar_height", "dimen", "android")
-            height = if (resId > 0) activity.resources.getDimensionPixelSize(resId) else 0
-            format = PixelFormat.TRANSPARENT
-        }
-        return params
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
