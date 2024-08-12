@@ -1,0 +1,9 @@
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <!-- List the policies you want to use -->
+        <disable_camera />
+        <disable_keyguard_features />
+        <watch_login />
+        <reset_password />
+    </uses-policies>
+</device-admin>
