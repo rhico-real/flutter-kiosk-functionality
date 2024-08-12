@@ -152,7 +152,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun initializeDevicePolicyManager() {
         devicePolicyManager = activity?.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        adminComponentName = ComponentName(activity!!, YourDeviceAdminReceiver::class.java)
+        adminComponentName = ComponentName(activity!!, MyDeviceAdminReceiver::class.java)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
