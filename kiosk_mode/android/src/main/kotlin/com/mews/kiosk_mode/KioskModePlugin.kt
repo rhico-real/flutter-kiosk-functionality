@@ -40,6 +40,11 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
     
+    private fun redirectToHomeLauncherSettings(activity: Activity) {
+        val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+        activity.startActivity(intent)
+    }
+
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
             redirectToHomeLauncherSettings(a)
