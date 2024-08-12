@@ -40,13 +40,42 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
+    // private fun startKioskMode(result: MethodChannel.Result) {
+    //     activity?.let { a ->
+    //         // ensures that startLockTask() will not throw
+    //         // see https://stackoverflow.com/questions/27826431/activity-startlocktask-occasionally-throws-illegalargumentexception
+    //         a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
+    //             try {
+    //                 a.startLockTask()
+    //                 result.success(true)
+    //                 kioskModeHandler.emit()
+    //             } catch (e: IllegalArgumentException) {
+    //                 result.success(false)
+    //             }
+    //         }
+    //     } ?: result.success(false)
+    // }
+
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
-            // ensures that startLockTask() will not throw
-            // see https://stackoverflow.com/questions/27826431/activity-startlocktask-occasionally-throws-illegalargumentexception
+            // Ensures that startLockTask() will not throw
+            // See https://stackoverflow.com/questions/27826431/activity-startlocktask-occasionally-throws-illegalargumentexception
             a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
                 try {
+                    // Start Lock Task (Kiosk) Mode
                     a.startLockTask()
+    
+                    // Adjust the system UI to allow swiping from the top
+                    a.window.decorView.systemUiVisibility = (
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            )
+    
+                    // Ensure the status bar is visible and swipable
+                    a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    
                     result.success(true)
                     kioskModeHandler.emit()
                 } catch (e: IllegalArgumentException) {
@@ -55,6 +84,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
         } ?: result.success(false)
     }
+
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.stopLockTask()
