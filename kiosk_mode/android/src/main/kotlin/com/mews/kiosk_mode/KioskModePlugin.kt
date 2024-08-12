@@ -1,3 +1,5 @@
+package com.mews.kiosk_mode
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
