@@ -43,15 +43,32 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !Settings.canDrawOverlays(a)) {
                 requestOverlayPermission(a)
                 result.success(false)
-                return
-            }
-
-            try {
+            } else {
+                redirectToHomeLauncherSettings(a)
                 setupWindowManager(a)
                 interceptView?.let { view ->
-                    windowManager.addView(view, createLayoutParams(a))
-                    result.success(true)
+                    val params = createLayoutParams(a)
+                    try {
+                        windowManager.addView(view, params)
+                        result.success(true)
+                    } catch (e: RuntimeException) {
+                        e.printStackTrace()
+                        result.success(false)
+                    }
                 } ?: result.success(false)
+            }
+        } ?: result.success(false)
+    }
+
+    private fun stopKioskMode(result: MethodChannel.Result) {
+        activity?.let { a ->
+            try {
+                interceptView?.let { view ->
+                    windowManager.removeView(view)
+                    interceptView = null
+                }
+                redirectToHomeLauncherSettings(a)
+                result.success(true)
             } catch (e: RuntimeException) {
                 e.printStackTrace()
                 result.success(false)
@@ -59,19 +76,9 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
         } ?: result.success(false)
     }
 
-    private fun stopKioskMode(result: MethodChannel.Result) {
-        activity?.let {
-            try {
-                interceptView?.let { view ->
-                    windowManager.removeView(view)
-                    interceptView = null
-                }
-                result.success(true)
-            } catch (e: RuntimeException) {
-                e.printStackTrace()
-                result.success(false)
-            }
-        } ?: result.success(false)
+    private fun redirectToHomeLauncherSettings(activity: Activity) {
+        val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+        activity.startActivity(intent)
     }
 
     private fun requestOverlayPermission(activity: Activity) {
