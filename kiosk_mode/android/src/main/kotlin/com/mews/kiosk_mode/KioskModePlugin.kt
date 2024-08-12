@@ -40,23 +40,18 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
 
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !Settings.canDrawOverlays(a)) {
-                requestOverlayPermission(a)
-                result.success(false)
-            } else {
-                redirectToHomeLauncherSettings(a)
-                setupWindowManager(a)
-                interceptView?.let { view ->
-                    val params = createLayoutParams(a)
-                    try {
-                        windowManager.addView(view, params)
-                        result.success(true)
-                    } catch (e: RuntimeException) {
-                        e.printStackTrace()
-                        result.success(false)
-                    }
-                } ?: result.success(false)
-            }
+            redirectToHomeLauncherSettings(a)
+            setupWindowManager(a)
+            interceptView?.let { view ->
+                val params = createLayoutParams(a)
+                try {
+                    windowManager.addView(view, params)
+                    result.success(true)
+                } catch (e: RuntimeException) {
+                    e.printStackTrace()
+                    result.success(false)
+                }
+            } ?: result.success(false)
         } ?: result.success(false)
     }
 
