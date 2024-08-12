@@ -49,13 +49,15 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         activity?.let { a ->
             a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
                 try {
-                    // Hide the navigation and status bars
+                    // Start Lock Task (Kiosk) Mode
+                    a.startLockTask()
+    
+                    // Adjust the system UI to keep the status bar visible and swipable
                     a.window.decorView.systemUiVisibility = (
                             View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            View.SYSTEM_UI_FLAG_VISIBLE
                             )
     
                     // Keep the screen on
@@ -72,6 +74,9 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
+            // Stop Lock Task (Kiosk) Mode
+            a.stopLockTask()
+          
             // Restore the system UI visibility
             a.window.decorView.systemUiVisibility = (
                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
@@ -86,6 +91,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         result.success(null)
         kioskModeHandler.emit()
     }
+
 
 
     private fun isManagedKiosk(result: MethodChannel.Result) {
