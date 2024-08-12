@@ -19,9 +19,8 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
-
     private lateinit var windowManager: WindowManager
-    private lateinit var interceptView: CustomViewGroup
+    private var interceptView: CustomViewGroup? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, methodChannelName)
@@ -39,21 +38,22 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
             windowManager = a.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            val params = WindowManager.LayoutParams().apply {
-                type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
-                gravity = Gravity.TOP
-                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                width = WindowManager.LayoutParams.MATCH_PARENT
+            val params = WindowManager.LayoutParams()
+            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
+            params.gravity = Gravity.TOP
+            params.flags = (
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+            )
+            params.width = WindowManager.LayoutParams.MATCH_PARENT
 
-                // Get the status bar height
-                val resId = a.resources.getIdentifier("status_bar_height", "dimen", "android")
-                height = if (resId > 0) a.resources.getDimensionPixelSize(resId) else 0
-                format = PixelFormat.TRANSPARENT
-            }
+            val resId = a.resources.getIdentifier("status_bar_height", "dimen", "android")
+            params.height = if (resId > 0) a.resources.getDimensionPixelSize(resId) else 0
+            params.format = PixelFormat.TRANSPARENT
 
             interceptView = CustomViewGroup(a)
+
             try {
                 windowManager.addView(interceptView, params)
                 result.success(true)
@@ -65,15 +65,11 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     private fun stopKioskMode(result: MethodChannel.Result) {
-        activity?.let {
-            try {
-                windowManager.removeView(interceptView)
-                result.success(true)
-            } catch (e: RuntimeException) {
-                e.printStackTrace()
-                result.success(false)
-            }
-        } ?: result.success(false)
+        interceptView?.let {
+            windowManager.removeView(it)
+            interceptView = null
+        }
+        result.success(true)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -81,9 +77,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     override fun onDetachedFromActivityForConfigChanges() {}
-    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        this.activity = binding.activity
-    }
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {}
 
     override fun onDetachedFromActivity() {
         this.activity = null
