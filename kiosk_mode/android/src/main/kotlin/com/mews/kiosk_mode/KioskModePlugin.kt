@@ -2,12 +2,13 @@ package com.mews.kiosk_mode
 
 import android.app.Activity
 import android.app.ActivityManager
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
-import android.graphics.PixelFormat
-import android.view.Gravity
+import android.os.Build
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.view.View
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -20,11 +21,14 @@ private const val methodChannelName = "com.mews.kiosk_mode/kiosk_mode"
 private const val eventChannelName = "com.mews.kiosk_mode/kiosk_mode_stream"
 
 class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+
     private lateinit var channel: MethodChannel
     private lateinit var eventChannel: EventChannel
     private var activity: Activity? = null
     private lateinit var kioskModeHandler: KioskModeStreamHandler
 
+    private lateinit var devicePolicyManager: DevicePolicyManager
+    private lateinit var adminComponentName: ComponentName
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, methodChannelName)
@@ -51,7 +55,16 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 try {
                     // Start Lock Task (Kiosk) Mode
                     a.startLockTask()
-    
+
+                    // Set lock task features to allow Home and Overview buttons
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        devicePolicyManager.setLockTaskFeatures(
+                            adminComponentName,
+                            DevicePolicyManager.LOCK_TASK_FEATURE_HOME or
+                            DevicePolicyManager.LOCK_TASK_FEATURE_OVERVIEW
+                        )
+                    }
+
                     // Adjust the system UI to keep the status bar visible and swipable
                     a.window.decorView.systemUiVisibility = (
                             View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
@@ -59,10 +72,10 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
                             View.SYSTEM_UI_FLAG_VISIBLE
                             )
-    
+
                     // Keep the screen on
                     a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-    
+
                     result.success(true)
                     kioskModeHandler.emit()
                 } catch (e: IllegalArgumentException) {
@@ -76,23 +89,29 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         activity?.let { a ->
             // Stop Lock Task (Kiosk) Mode
             a.stopLockTask()
-          
+
+            // Clear lock task features
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                devicePolicyManager.setLockTaskFeatures(
+                    adminComponentName,
+                    DevicePolicyManager.LOCK_TASK_FEATURE_NONE
+                )
+            }
+
             // Restore the system UI visibility
             a.window.decorView.systemUiVisibility = (
                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     )
-    
+
             // Remove the flag to allow the screen to turn off
             a.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
-    
+
         result.success(null)
         kioskModeHandler.emit()
     }
-
-
 
     private fun isManagedKiosk(result: MethodChannel.Result) {
         val service = activity?.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
@@ -119,13 +138,9 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
-        eventChannel.setStreamHandler(null)
-    }
-
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activity = binding.activity
+        initializeDevicePolicyManager()
     }
 
     override fun onDetachedFromActivityForConfigChanges() {}
@@ -133,5 +148,15 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     override fun onDetachedFromActivity() {
         this.activity = null
+    }
+
+    private fun initializeDevicePolicyManager() {
+        devicePolicyManager = activity?.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        adminComponentName = ComponentName(activity!!, YourDeviceAdminReceiver::class.java)
+    }
+
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        channel.setMethodCallHandler(null)
+        eventChannel.setStreamHandler(null)
     }
 }
