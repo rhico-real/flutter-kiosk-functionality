@@ -37,9 +37,17 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !Settings.canDrawOverlays(a)) {
+                // Prompt user to grant overlay permission
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + a.packageName))
+                a.startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
+                result.success(false)
+                return
+            }
+
             windowManager = a.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val params = WindowManager.LayoutParams()
-            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
+            params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             params.gravity = Gravity.TOP
             params.flags = (
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -63,6 +71,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
         } ?: result.success(false)
     }
+
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         interceptView?.let {
