@@ -1,36 +1,37 @@
-package com.mews.kiosk_mode
-
 import android.app.Activity
 import android.content.Context
-import android.graphics.PixelFormat
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.graphics.PixelFormat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 
-private const val methodChannelName = "com.mews.kiosk_mode/kiosk_mode"
+private const val REQUEST_CODE_OVERLAY_PERMISSION = 1001
 
-class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, ActivityAware {
 
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
     private lateinit var windowManager: WindowManager
-    private var interceptView: CustomViewGroup? = null
+    private lateinit var interceptView: CustomViewGroup
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(flutterPluginBinding.binaryMessenger, methodChannelName)
+        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.mews.kiosk_mode/kiosk_mode")
         channel.setMethodCallHandler(this)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "startKioskMode" -> startKioskMode(result)
-            "stopKioskMode" -> stopKioskMode(result)
             else -> result.notImplemented()
         }
     }
@@ -38,7 +39,6 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun startKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !Settings.canDrawOverlays(a)) {
-                // Prompt user to grant overlay permission
                 val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + a.packageName))
                 a.startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
                 result.success(false)
@@ -72,20 +72,12 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         } ?: result.success(false)
     }
 
-
-    private fun stopKioskMode(result: MethodChannel.Result) {
-        interceptView?.let {
-            windowManager.removeView(it)
-            interceptView = null
-        }
-        result.success(true)
-    }
-
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activity = binding.activity
     }
 
     override fun onDetachedFromActivityForConfigChanges() {}
+
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {}
 
     override fun onDetachedFromActivity() {
