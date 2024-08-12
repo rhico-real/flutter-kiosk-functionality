@@ -35,7 +35,7 @@
         <!-- Register the DeviceAdminReceiver inside the application tag -->
         <receiver
             android:name=".MyDeviceAdminReceiver"
-            android:label="@string/device_admin_label"
+            android:label="MyDeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"
             android:exported="false"> <!-- Typically, DeviceAdminReceiver should not be exported -->
             <meta-data
