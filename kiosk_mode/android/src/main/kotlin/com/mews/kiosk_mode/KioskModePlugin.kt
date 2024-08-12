@@ -22,7 +22,7 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
     private lateinit var windowManager: WindowManager
-    private lateinit var interceptView: CustomViewGroup
+    private var interceptView: CustomViewGroup? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.mews.kiosk_mode/kiosk_mode")
