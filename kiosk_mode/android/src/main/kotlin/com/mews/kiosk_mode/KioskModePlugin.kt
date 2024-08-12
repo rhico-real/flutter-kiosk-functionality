@@ -5,6 +5,7 @@ import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +20,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 
 private const val methodChannelName = "com.mews.kiosk_mode/kiosk_mode"
 private const val eventChannelName = "com.mews.kiosk_mode/kiosk_mode_stream"
+private const val REQUEST_CODE_ENABLE_ADMIN = 1
 
 class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
@@ -47,14 +49,6 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "isManagedKiosk" -> isManagedKiosk(result)
             else -> result.notImplemented()
         }
-    }
-
-    private fun activateDeviceAdmin() {
-        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponentName)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Please activate device admin to enable Kiosk mode.")
-        }
-        activity?.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
     }
 
     private fun startKioskMode(result: MethodChannel.Result) {
@@ -95,13 +89,10 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         } ?: result.success(false)
     }
 
-
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
-            // Stop Lock Task (Kiosk) Mode
             a.stopLockTask()
 
-            // Clear lock task features
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 devicePolicyManager.setLockTaskFeatures(
                     adminComponentName,
@@ -109,14 +100,12 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 )
             }
 
-            // Restore the system UI visibility
             a.window.decorView.systemUiVisibility = (
                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
                     View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     )
 
-            // Remove the flag to allow the screen to turn off
             a.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
 
@@ -147,6 +136,14 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             ActivityManager.LOCK_TASK_MODE_LOCKED -> true
             else -> false
         }
+    }
+
+    private fun activateDeviceAdmin() {
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponentName)
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Please activate device admin to enable Kiosk mode.")
+        }
+        activity?.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
