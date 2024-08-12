@@ -23,7 +23,9 @@
         android:supportsRtl="true">
 
         <!-- Define your activities here -->
-        <activity android:name=".MainActivity">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"> <!-- Make sure to set the correct value based on your requirements -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -34,7 +36,8 @@
         <receiver
             android:name=".MyDeviceAdminReceiver"
             android:label="@string/device_admin_label"
-            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="false"> <!-- Typically, DeviceAdminReceiver should not be exported -->
             <meta-data
                 android:name="android.app.device_admin"
                 android:resource="@xml/device_admin_receiver" />
@@ -46,3 +49,4 @@
     </application>
 
 </manifest>
+
