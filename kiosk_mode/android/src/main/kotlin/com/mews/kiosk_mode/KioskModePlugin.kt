@@ -74,10 +74,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.stopLockTask()
-        interceptView?.let {
-            windowManager?.removeView(it)
-            interceptView = null
-        }
+      
         result.success(null)
         kioskModeHandler.emit()
     }
