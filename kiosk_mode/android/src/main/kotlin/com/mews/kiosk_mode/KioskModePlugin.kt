@@ -1,170 +1,95 @@
 package com.mews.kiosk_mode
 
 import android.app.Activity
-import android.app.ActivityManager
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.view.View
+import android.graphics.PixelFormat
+import android.view.Gravity
 import android.view.ViewGroup
 import android.view.WindowManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 
 private const val methodChannelName = "com.mews.kiosk_mode/kiosk_mode"
-private const val eventChannelName = "com.mews.kiosk_mode/kiosk_mode_stream"
-private const val REQUEST_CODE_ENABLE_ADMIN = 1
 
 class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private lateinit var channel: MethodChannel
-    private lateinit var eventChannel: EventChannel
     private var activity: Activity? = null
-    private lateinit var kioskModeHandler: KioskModeStreamHandler
 
-    private lateinit var devicePolicyManager: DevicePolicyManager
-    private lateinit var adminComponentName: ComponentName
+    private lateinit var windowManager: WindowManager
+    private lateinit var interceptView: CustomViewGroup
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, methodChannelName)
         channel.setMethodCallHandler(this)
-        kioskModeHandler = KioskModeStreamHandler(this::isInKioskMode)
-
-        eventChannel = EventChannel(flutterPluginBinding.binaryMessenger, eventChannelName)
-        eventChannel.setStreamHandler(kioskModeHandler)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "startKioskMode" -> startKioskMode(result)
             "stopKioskMode" -> stopKioskMode(result)
-            "isInKioskMode" -> isInKioskMode(result)
-            "isManagedKiosk" -> isManagedKiosk(result)
             else -> result.notImplemented()
         }
     }
 
     private fun startKioskMode(result: MethodChannel.Result) {
-        if (!devicePolicyManager.isAdminActive(adminComponentName)) {
-            activateDeviceAdmin()
-            result.success(false)
-            return
-        }
-
         activity?.let { a ->
-            a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
-                try {
-                    a.startLockTask()
+            windowManager = a.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val params = WindowManager.LayoutParams().apply {
+                type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
+                gravity = Gravity.TOP
+                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                width = WindowManager.LayoutParams.MATCH_PARENT
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        devicePolicyManager.setLockTaskFeatures(
-                            adminComponentName,
-                            DevicePolicyManager.LOCK_TASK_FEATURE_HOME or
-                            DevicePolicyManager.LOCK_TASK_FEATURE_OVERVIEW
-                        )
-                    }
+                // Get the status bar height
+                val resId = a.resources.getIdentifier("status_bar_height", "dimen", "android")
+                height = if (resId > 0) a.resources.getDimensionPixelSize(resId) else 0
+                format = PixelFormat.TRANSPARENT
+            }
 
-                    a.window.decorView.systemUiVisibility = (
-                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                            View.SYSTEM_UI_FLAG_VISIBLE
-                            )
-
-                    a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-                    result.success(true)
-                    kioskModeHandler.emit()
-                } catch (e: IllegalArgumentException) {
-                    result.success(false)
-                }
+            interceptView = CustomViewGroup(a)
+            try {
+                windowManager.addView(interceptView, params)
+                result.success(true)
+            } catch (e: RuntimeException) {
+                e.printStackTrace()
+                result.success(false)
             }
         } ?: result.success(false)
     }
 
     private fun stopKioskMode(result: MethodChannel.Result) {
-        activity?.let { a ->
-            a.stopLockTask()
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                devicePolicyManager.setLockTaskFeatures(
-                    adminComponentName,
-                    DevicePolicyManager.LOCK_TASK_FEATURE_NONE
-                )
+        activity?.let {
+            try {
+                windowManager.removeView(interceptView)
+                result.success(true)
+            } catch (e: RuntimeException) {
+                e.printStackTrace()
+                result.success(false)
             }
-
-            a.window.decorView.systemUiVisibility = (
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    )
-
-            a.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-
-        result.success(null)
-        kioskModeHandler.emit()
-    }
-
-    private fun isManagedKiosk(result: MethodChannel.Result) {
-        val service = activity?.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-        if (service == null) {
-            result.success(null)
-            return
-        }
-
-        result.success(service.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_LOCKED)
-    }
-
-    private fun isInKioskMode(result: MethodChannel.Result) {
-        result.success(isInKioskMode())
-    }
-
-    private fun isInKioskMode(): Boolean? {
-        val service = activity?.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            ?: return null
-
-        return when (service.lockTaskModeState) {
-            ActivityManager.LOCK_TASK_MODE_PINNED,
-            ActivityManager.LOCK_TASK_MODE_LOCKED -> true
-            else -> false
-        }
-    }
-
-    private fun activateDeviceAdmin() {
-        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponentName)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Please activate device admin to enable Kiosk mode.")
-        }
-        activity?.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
+        } ?: result.success(false)
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activity = binding.activity
-        initializeDevicePolicyManager()
     }
 
     override fun onDetachedFromActivityForConfigChanges() {}
-    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {}
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        this.activity = binding.activity
+    }
 
     override fun onDetachedFromActivity() {
         this.activity = null
     }
 
-    private fun initializeDevicePolicyManager() {
-        devicePolicyManager = activity?.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        adminComponentName = ComponentName(activity!!, MyDeviceAdminReceiver::class.java)
-    }
-
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
-        eventChannel.setStreamHandler(null)
     }
 }
