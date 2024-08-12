@@ -7,6 +7,7 @@ import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.View
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -23,8 +24,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private lateinit var eventChannel: EventChannel
     private var activity: Activity? = null
     private lateinit var kioskModeHandler: KioskModeStreamHandler
-    private var windowManager: WindowManager? = null
-    private var interceptView: CustomViewGroup? = null
+
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, methodChannelName)
@@ -49,10 +49,18 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         activity?.let { a ->
             a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
                 try {
+                    // Start Lock Task (Kiosk) Mode
                     a.startLockTask()
 
-                    // Lock the status bar by overlaying a custom view
-                    lockStatusBar(a)
+                    // Adjust the system UI to allow swiping from the top (status bar)
+                    a.window.decorView.systemUiVisibility = (
+                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            )
+
+                    // Keep the screen on, and ensure the status bar is visible and swipable
+                    a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
                     result.success(true)
                     kioskModeHandler.emit()
@@ -63,29 +71,6 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         } ?: result.success(false)
     }
 
-    private fun lockStatusBar(context: Context) {
-        windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val params = WindowManager.LayoutParams()
-        params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ERROR
-        params.gravity = Gravity.TOP
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        params.width = WindowManager.LayoutParams.MATCH_PARENT
-
-        // Get the status bar height
-        val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
-        val statusBarHeight = if (resId > 0) context.resources.getDimensionPixelSize(resId) else 0
-        params.height = statusBarHeight
-        params.format = PixelFormat.TRANSPARENT
-
-        interceptView = CustomViewGroup(context)
-        try {
-            windowManager?.addView(interceptView, params)
-        } catch (e: RuntimeException) {
-            e.printStackTrace()
-        }
-    }
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.stopLockTask()
