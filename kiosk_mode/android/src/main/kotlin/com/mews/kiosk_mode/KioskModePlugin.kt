@@ -49,14 +49,26 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
+    private fun activateDeviceAdmin() {
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponentName)
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Please activate device admin to enable Kiosk mode.")
+        }
+        activity?.startActivityForResult(intent, REQUEST_CODE_ENABLE_ADMIN)
+    }
+
     private fun startKioskMode(result: MethodChannel.Result) {
+        if (!devicePolicyManager.isAdminActive(adminComponentName)) {
+            activateDeviceAdmin()
+            result.success(false)
+            return
+        }
+
         activity?.let { a ->
             a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
                 try {
-                    // Start Lock Task (Kiosk) Mode
                     a.startLockTask()
 
-                    // Set lock task features to allow Home and Overview buttons
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         devicePolicyManager.setLockTaskFeatures(
                             adminComponentName,
@@ -65,7 +77,6 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                         )
                     }
 
-                    // Adjust the system UI to keep the status bar visible and swipable
                     a.window.decorView.systemUiVisibility = (
                             View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
                             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
@@ -73,7 +84,6 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                             View.SYSTEM_UI_FLAG_VISIBLE
                             )
 
-                    // Keep the screen on
                     a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
                     result.success(true)
@@ -84,6 +94,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
         } ?: result.success(false)
     }
+
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.let { a ->
