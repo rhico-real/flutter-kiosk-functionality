@@ -46,19 +46,17 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         activity?.let { a ->
             a.findViewById<ViewGroup>(android.R.id.content).getChildAt(0).post {
                 try {
-                    // Start Lock Task (Kiosk) Mode
                     a.startLockTask()
-
-                    // Adjust the system UI to allow swiping from the top (status bar)
+    
+                    // Set the UI flags to allow top swipe (status bar)
                     a.window.decorView.systemUiVisibility = (
-                            View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            )
-
-                    // Keep the screen on, and ensure the status bar is visible and swipable
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_LOW_PROFILE
+                    )
+    
                     a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
+    
                     result.success(true)
                     kioskModeHandler.emit()
                 } catch (e: IllegalArgumentException) {
@@ -67,6 +65,7 @@ class KioskModePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
         } ?: result.success(false)
     }
+
 
     private fun stopKioskMode(result: MethodChannel.Result) {
         activity?.stopLockTask()
