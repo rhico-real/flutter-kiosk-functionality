@@ -1,4 +1,4 @@
-package com.yahshua.yahshua_timekeeper_rfid.Utils
+package com.mews.kiosk_mode
 
 import android.content.Context
 import android.view.MotionEvent
