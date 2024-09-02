@@ -30,9 +30,7 @@ enum KioskMode {
 ///
 /// [1]: https://developer.android.com/reference/android/app/Activity#startLockTask()
 /// [2]: https://developer.apple.com/documentation/uikit/uiaccessibility/1615186-requestguidedaccesssession/
-Future<bool> startKioskMode() => _channel
-    .invokeMethod<bool>('startKioskMode')
-    .then((value) => value ?? false);
+Future<bool> startKioskMode() => _channel.invokeMethod<bool>('startKioskMode').then((value) => value ?? false);
 
 /// On Android, stops the current task from being locked. On iOS, exits the Single App mode.
 ///
@@ -49,9 +47,9 @@ Future<bool?> stopKioskMode() => _channel.invokeMethod<bool>('stopKioskMode');
 /// On Android, it calls `isInLockTaskMode`.
 ///
 /// On iOS, it returns result of `UIAccessibility.isGuidedAccessEnabled`.
-Future<KioskMode> getKioskMode() => _channel
-    .invokeMethod<bool>('isInKioskMode')
-    .then((value) => value == true ? KioskMode.enabled : KioskMode.disabled);
+Future<KioskMode> getKioskMode() => _channel.invokeMethod<bool>('isInKioskMode').then((value) => value == true ? KioskMode.enabled : KioskMode.disabled);
+
+Future<bool> isDefaultHomeLauncher() => _channel.invokeMethod<bool>('isDefaultHomeLauncher').then((value) => value ?? false);
 
 /// Returns `true`, if app is in a proper managed kiosk mode.
 ///
@@ -62,9 +60,7 @@ Future<KioskMode> getKioskMode() => _channel
 ///
 /// On iOS, it always returns `false`, as this package doesn't support
 /// detection of Apple Business Manager yet.
-Future<bool> isManagedKiosk() => _channel
-    .invokeMethod<bool>('isManagedKiosk')
-    .then((value) => value == true);
+Future<bool> isManagedKiosk() => _channel.invokeMethod<bool>('isManagedKiosk').then((value) => value == true);
 
 /// Returns the stream with [KioskMode].
 ///
@@ -75,11 +71,9 @@ Future<bool> isManagedKiosk() => _channel
 Stream<KioskMode> watchKioskMode({
   Duration androidQueryPeriod = const Duration(seconds: 5),
 }) =>
-    Stream.fromFuture(getKioskMode())
-        .merge(_getKioskModeStream(androidQueryPeriod));
+    Stream.fromFuture(getKioskMode()).merge(_getKioskModeStream(androidQueryPeriod));
 
-Stream<KioskMode> _getKioskModeStream(Duration androidQueryPeriod) =>
-    _eventChannel.receiveBroadcastStream(
+Stream<KioskMode> _getKioskModeStream(Duration androidQueryPeriod) => _eventChannel.receiveBroadcastStream(
       {'androidQueryPeriod': androidQueryPeriod.inMilliseconds},
     ).map(
       (dynamic value) => value == true ? KioskMode.enabled : KioskMode.disabled,
