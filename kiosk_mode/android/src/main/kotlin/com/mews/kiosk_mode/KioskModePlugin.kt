@@ -1,15 +1,10 @@
 package com.mews.kiosk_mode
 
 import android.app.Activity
-import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
+import android.content.pm.PackageManager
 import android.provider.Settings
-import android.view.Gravity
-import android.view.ViewGroup
-import android.view.WindowManager
-import android.graphics.PixelFormat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -20,7 +15,6 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
 
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
-    private lateinit var windowManager: WindowManager
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.mews.kiosk_mode/kiosk_mode")
@@ -31,6 +25,7 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
         when (call.method) {
             "startKioskMode" -> startKioskMode(result)
             "stopKioskMode" -> stopKioskMode(result)
+            "isDefaultHomeLauncher" -> isDefaultHomeLauncher(result)
             else -> result.notImplemented()
         }
     }
@@ -50,6 +45,17 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
                 e.printStackTrace()
                 result.success(false)
             }
+        } ?: result.success(false)
+    }
+
+    private fun isDefaultHomeLauncher(result: MethodChannel.Result) {
+        activity?.let { a ->
+            val intent = Intent(Intent.ACTION_MAIN)
+            intent.addCategory(Intent.CATEGORY_HOME)
+            val resolveInfo = a.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            val defaultHome = resolveInfo?.activityInfo?.packageName
+            val isDefault = defaultHome == a.packageName
+            result.success(isDefault)
         } ?: result.success(false)
     }
 
