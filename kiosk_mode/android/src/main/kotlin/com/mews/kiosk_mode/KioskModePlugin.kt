@@ -52,24 +52,20 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
         activity?.let { a ->
             val packageManager = a.packageManager
 
-            // Get the current preferred home activity
+            // Intent to resolve the home launcher activities
             val intent = Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_HOME)
             }
 
-            val resolveInfoList = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-
-            // Check if the current app is in the list of home activities and is preferred
-            val isDefault = resolveInfoList.any { resolveInfo ->
-                val preferredHome = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-                preferredHome?.activityInfo?.packageName == a.packageName
-            }
-
+            // Resolve the preferred home activity
+            val preferredHome = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            
+            // Check if the resolved activity is the current app's package
+            val isDefault = preferredHome?.activityInfo?.packageName == a.packageName
+            
             result.success(isDefault)
         } ?: result.success(false)
     }
-
-
 
     private fun redirectToHomeLauncherSettings(activity: Activity) {
         val intent = Intent(Settings.ACTION_HOME_SETTINGS)
