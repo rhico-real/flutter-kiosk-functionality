@@ -50,14 +50,15 @@ class KioskModePlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
 
     private fun isDefaultHomeLauncher(result: MethodChannel.Result) {
         activity?.let { a ->
-            val intent = Intent(Intent.ACTION_MAIN)
-            intent.addCategory(Intent.CATEGORY_HOME)
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+            }
             val resolveInfo = a.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-            val defaultHome = resolveInfo?.activityInfo?.packageName
-            val isDefault = defaultHome == a.packageName
+            val isDefault = resolveInfo?.activityInfo?.packageName == a.packageName
             result.success(isDefault)
         } ?: result.success(false)
     }
+
 
     private fun redirectToHomeLauncherSettings(activity: Activity) {
         val intent = Intent(Settings.ACTION_HOME_SETTINGS)
