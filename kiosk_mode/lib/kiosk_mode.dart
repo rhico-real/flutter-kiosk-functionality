@@ -49,7 +49,10 @@ Future<bool?> stopKioskMode() => _channel.invokeMethod<bool>('stopKioskMode');
 /// On iOS, it returns result of `UIAccessibility.isGuidedAccessEnabled`.
 Future<KioskMode> getKioskMode() => _channel.invokeMethod<bool>('isInKioskMode').then((value) => value == true ? KioskMode.enabled : KioskMode.disabled);
 
-Future<bool> isDefaultHomeLauncher() => _channel.invokeMethod<bool>('isDefaultHomeLauncher').then((value) => value ?? false);
+Future<bool> isDefaultHomeLauncher() async {
+  final bool? result = await _channel.invokeMethod<bool>('isDefaultHomeLauncher');
+  return result ?? false;
+}
 
 /// Returns `true`, if app is in a proper managed kiosk mode.
 ///
